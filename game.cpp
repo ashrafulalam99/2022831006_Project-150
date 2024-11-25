@@ -2,20 +2,56 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 
-#define SCREEN_WIDTH 800
-#define SCREEN_HEIGHT 600
+#define SCREEN_WIDTH 980
+#define SCREEN_HEIGHT 720
 #define CELL_SIZE 20
 
-typedef struct {
+typedef struct 
+{
     int x, y;
 } Point;
 
+//Initialize Snake
 int food_x, food_y, bonus_food_x, bonus_food_y;
-Point snake[SCREEN_WIDTH * SCREEN_HEIGHT / CELL_SIZE / CELL_SIZE];
+Point snake[SCREEN_WIDTH * SCREEN_HEIGHT / CELL_SIZE / CELL_SIZE]; // Creation of Snake
 int snake_len = 3;
-int snake_dir = 1; // 1: right, 2: left, 3: up, 4: down
+
+int snake_direction = 1; // 1: right, 2: left, 3: up, 4: down
 int score = 0, bonus_food_counter = 0;
 bool bonus_food_active = false;
+
+void draw_circle(SDL_Renderer *renderer, int cx, int cy, int radius)
+{
+    for (int w = 0; w < radius * 2; w++)
+    {
+        for (int h = 0; h < radius * 2; h++)
+        {
+            int dx = radius - w;
+            int dy = radius - h;
+            if ((dx * dx + dy * dy) <= (radius * radius))
+            {
+                SDL_RenderDrawPoint(renderer, cx + dx, cy + dy);
+            }
+        }
+    }
+}
+
+void draw_snake(SDL_Renderer *renderer)
+{
+    // Draw the head as a circle
+    SDL_SetRenderDrawColor(renderer, 0, 153, 0, 255);
+    int head_x = snake[0].x * CELL_SIZE + CELL_SIZE / 2;
+    int head_y = snake[0].y * CELL_SIZE + CELL_SIZE / 2;
+    int head_radius = CELL_SIZE / 2 + 2;
+    draw_circle(renderer, head_x, head_y, head_radius);
+
+    // Draw the rest of the snake as rectangles
+    for (int i = 1; i < snake_len; i++)
+    {
+        SDL_Rect rect = {snake[i].x * CELL_SIZE, snake[i].y * CELL_SIZE, CELL_SIZE, CELL_SIZE};
+        SDL_RenderFillRect(renderer, &rect);
+    }
+}
 
 //Generating food
 void generate_food() 
@@ -32,37 +68,33 @@ void generate_food()
 }
 
 //Generating Bonus Food
-void generate_bonus_food() {
+void generate_bonus_food()
+{
     bonus_food_x = rand() % (SCREEN_WIDTH / CELL_SIZE);
     bonus_food_y = rand() % (SCREEN_HEIGHT / CELL_SIZE);
 
-    for (int i = 0; i < snake_len; i++) {
+    for (int i = 0; i < snake_len; i++)
+    {
         if (bonus_food_x == snake[i].x && bonus_food_y == snake[i].y) {
             generate_bonus_food();
         }
     }
-    if (bonus_food_x == food_x && bonus_food_y == food_y) {
+
+    if (bonus_food_x == food_x && bonus_food_y == food_y)
+    {
         generate_bonus_food();
     }
 }
 
-//Shaping the food as circle
-void draw_circle(SDL_Renderer *renderer, int cx, int cy, int radius) {
-    for (int w = 0; w < radius * 2; w++) {
-        for (int h = 0; h < radius * 2; h++) {
-            int dx = radius - w;
-            int dy = radius - h;
-            if ((dx * dx + dy * dy) <= (radius * radius)) {
-                SDL_RenderDrawPoint(renderer, cx + dx, cy + dy);
-            }
-        }
-    }
-}
-
-void draw_food(SDL_Renderer *renderer, bool isBonusFood, int x, int y) {
-    if (isBonusFood) {
+void draw_food(SDL_Renderer *renderer, bool isBonusFood, int x, int y)
+{
+    if (isBonusFood)
+    {
         SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-    } else {
+    } 
+    
+    else
+    {
         SDL_SetRenderDrawColor(renderer, 0, 204, 204, 255);
     }
 
@@ -89,16 +121,16 @@ void handle_events(bool *game_over)
             switch (event.key.keysym.sym)
             {
                 case SDLK_UP:
-                    if (snake_dir != 4) snake_dir = 3;
+                    if (snake_direction != 4) snake_direction = 3;
                     break;
                 case SDLK_DOWN:
-                    if (snake_dir != 3) snake_dir = 4;
+                    if (snake_direction != 3) snake_direction = 4;
                     break;
                 case SDLK_LEFT:
-                    if (snake_dir != 1) snake_dir = 2;
+                    if (snake_direction != 1) snake_direction = 2;
                     break;
                 case SDLK_RIGHT:
-                    if (snake_dir != 2) snake_dir = 1;
+                    if (snake_direction != 2) snake_direction = 1;
                     break;
             }
         }
@@ -113,7 +145,7 @@ void move_snake()
         snake[i] = snake[i - 1];
     }
 
-    switch (snake_dir) 
+    switch (snake_direction) 
     {
         case 1: snake[0].x++; break;
         case 2: snake[0].x--; break;
@@ -144,7 +176,7 @@ bool check_collision()
 }
 
 // Check if the snake eats the food
-bool consuming_food() 
+void consuming_food() 
 {
     if (snake[0].x == food_x && snake[0].y == food_y)
     {
@@ -152,37 +184,35 @@ bool consuming_food()
         score += 10;
         bonus_food_counter++;
         generate_food();
-        return true;
+        snake[snake_len - 1] = snake[snake_len - 2];
     }
-
-    return false;
 }
 
 // Check if the snake eats the food
-void consuming_bonus_food() {
-    if (bonus_food_counter == 5 && !bonus_food_active) {
+void consuming_bonus_food()
+{
+    if (bonus_food_counter == 5 && !bonus_food_active)
+    {
         generate_bonus_food();
         bonus_food_active = true;
         bonus_food_counter = 0;
     }
 
     if (bonus_food_active && snake[0].x == bonus_food_x && snake[0].y == bonus_food_y) {
-        snake_len += 2;
+        
+        for(int i = 1; i <= 3; i++)
+        {   snake_len += 1;
+            snake[snake_len - 1] = snake[snake_len - 2];
+        }
+
         score += 50;
         bonus_food_active = false;
     }
 }
 
-void draw_snake(SDL_Renderer *renderer) {
-    SDL_SetRenderDrawColor(renderer, 0, 153, 0, 255);
-    for (int i = 0; i < snake_len; i++) {
-        SDL_Rect rect = {snake[i].x * CELL_SIZE, snake[i].y * CELL_SIZE, CELL_SIZE, CELL_SIZE};
-        SDL_RenderFillRect(renderer, &rect);
-    }
-}
-
 //Displaying Score
-void render_score(SDL_Renderer *renderer, TTF_Font *font, int score) {
+void render_score(SDL_Renderer *renderer, TTF_Font *font, int score)
+{
     SDL_Color white = {255, 255, 255, 255};
     char score_text[20];
     sprintf(score_text, "Score: %d", score);
@@ -197,21 +227,36 @@ void render_score(SDL_Renderer *renderer, TTF_Font *font, int score) {
     SDL_DestroyTexture(texture);
 }
 
-//Displaying Game Over
-void display_game_over(SDL_Renderer *renderer, TTF_Font *font, int score) {
+
+void restart_game()
+{
+    snake_len = 3;
+    snake_direction = 1;
+    score = 0;
+    bonus_food_counter = 0;
+    bonus_food_active = false;
+
+    snake[0] = (Point){SCREEN_WIDTH / 2 / CELL_SIZE, SCREEN_HEIGHT / 2 / CELL_SIZE};
+    generate_food();
+}
+
+//Displaying Game Over and final score
+void display_game_over(SDL_Renderer *renderer, TTF_Font *font, int score) 
+{
+    //Coloring
     SDL_Color white = {255, 255, 255, 255};
     SDL_Color red = {255, 0, 0, 255};
+    SDL_Color reddish_orange = {255, 128, 0, 255};
 
-    SDL_Surface *game_over_surface = TTF_RenderText_Solid(font, "Game Over", red);
+    TTF_Font *large_font = TTF_OpenFont("arial.ttf", 48); // Adjust font size
+    SDL_Surface *game_over_surface = TTF_RenderText_Solid(large_font, "GAME OVER!", red);
     SDL_Texture *game_over_texture = SDL_CreateTextureFromSurface(renderer, game_over_surface);
-
     SDL_Rect game_over_rect = {SCREEN_WIDTH / 2 - game_over_surface->w / 2, SCREEN_HEIGHT / 2 - game_over_surface->h / 2 - 50, game_over_surface->w, game_over_surface->h};
 
     char score_text[50];
-    sprintf(score_text, "Your Score: %d", score);
+    sprintf(score_text, "Final Score: %d", score);
     SDL_Surface *score_surface = TTF_RenderText_Solid(font, score_text, white);
     SDL_Texture *score_texture = SDL_CreateTextureFromSurface(renderer, score_surface);
-
     SDL_Rect score_rect = {SCREEN_WIDTH / 2 - score_surface->w / 2, SCREEN_HEIGHT / 2 - score_surface->h / 2 + 50, score_surface->w, score_surface->h};
 
     SDL_SetRenderDrawColor(renderer, 0, 0, 50, 255);
@@ -220,21 +265,51 @@ void display_game_over(SDL_Renderer *renderer, TTF_Font *font, int score) {
     SDL_RenderCopy(renderer, score_texture, NULL, &score_rect);
     SDL_RenderPresent(renderer);
 
+    char restart_text[30] = "Press ENTER to restart";
+    SDL_Surface *restart_surface = TTF_RenderText_Solid(font, restart_text, reddish_orange);
+    SDL_Texture *restart_texture = SDL_CreateTextureFromSurface(renderer, restart_surface);
+
+    SDL_Rect restart_rect = {SCREEN_WIDTH / 2 - restart_surface->w / 2, SCREEN_HEIGHT / 2 + 100, restart_surface->w, restart_surface->h};
+
+    SDL_RenderCopy(renderer, restart_texture, NULL, &restart_rect);
+    SDL_RenderPresent(renderer);
+
     SDL_FreeSurface(game_over_surface);
     SDL_FreeSurface(score_surface);
+    SDL_FreeSurface(restart_surface);
     SDL_DestroyTexture(game_over_texture);
     SDL_DestroyTexture(score_texture);
+    SDL_DestroyTexture(restart_texture);
 
-    SDL_Delay(5000);
+    SDL_Delay(3000);
+
+    bool restart = false;
+    while (!restart)
+    {
+        SDL_Event event;
+        while (SDL_PollEvent(&event))
+        {
+            if (event.type == SDL_KEYDOWN)
+            {
+                if (event.key.keysym.sym == SDLK_RETURN)
+                {
+                    restart = true;
+                }
+            }
+        }
+    }
 }
 
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
+    // Initialize SDL and TTF
     if (SDL_Init(SDL_INIT_VIDEO) != 0 || TTF_Init() != 0) {
         printf("Initialization Error: %s\n", SDL_GetError());
         return 1;
     }
 
+    // Initialize Window, Renderer, font
     SDL_Window *window = SDL_CreateWindow("Snake Game", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, 0);
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     TTF_Font *font = TTF_OpenFont("arial.ttf", 28);
@@ -244,36 +319,48 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    // Starting of the game
     snake[0] = (Point){SCREEN_WIDTH / 2 / CELL_SIZE, SCREEN_HEIGHT / 2 / CELL_SIZE};
     generate_food();
 
     bool game_over = false;
-    while (!game_over) {
-        handle_events(&game_over);
+    while (true)
+    {
+        while (!game_over)
+        {
+            handle_events(&game_over);
 
-        move_snake();
+            move_snake();
 
-        if (check_collision()) {
-            game_over = true;
+            if (check_collision()) 
+            {
+                game_over = true;
+            }
+
+            consuming_food();
+            consuming_bonus_food();
+
+            SDL_SetRenderDrawColor(renderer, 0, 0, 50, 255);
+            SDL_RenderClear(renderer);
+
+            draw_snake(renderer);
+            draw_food(renderer, false, food_x, food_y);
+
+            if (bonus_food_active) 
+            {
+                draw_food(renderer, true, bonus_food_x, bonus_food_y);
+            }
+
+            render_score(renderer, font, score);
+            SDL_RenderPresent(renderer);
+            SDL_Delay(75); // Game Speed
         }
-        consuming_food();
-        consuming_bonus_food();
 
-        SDL_SetRenderDrawColor(renderer, 0, 0, 50, 255);
-        SDL_RenderClear(renderer);
+        display_game_over(renderer, font, score);
+        restart_game();
 
-        draw_snake(renderer);
-        draw_food(renderer, false, food_x, food_y);
-        if (bonus_food_active) {
-            draw_food(renderer, true, bonus_food_x, bonus_food_y);
-        }
-        render_score(renderer, font, score);
-
-        SDL_RenderPresent(renderer);
-        SDL_Delay(100);
+        game_over = false;
     }
-
-    display_game_over(renderer, font, score);
 
     TTF_CloseFont(font);
     SDL_DestroyRenderer(renderer);
